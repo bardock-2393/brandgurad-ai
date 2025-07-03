@@ -18,9 +18,11 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
     const [elementsMeta, setElementsMeta] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [pngUrl, setPngUrl] = useState<string | null>(null);
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+    const [noVideoOrGif, setNoVideoOrGif] = useState<boolean>(false);
 
     useEffect(() => {
-        async function fetchMetaAndPng() {
+        async function fetchMetaAndRenditions() {
             try {
                 const metaArr = await addOnUISdk.app.document.getPagesMetadata({
                     range: addOnUISdk.constants.Range.currentPage
@@ -28,26 +30,48 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
                 setPageMeta(metaArr && metaArr.length > 0 ? metaArr[0] : null);
                 const elements = await sandboxProxy.getCurrentPageElementsMeta();
                 setElementsMeta(elements);
-                // Automatically export PNG after metadata loads
-                const renditionOptions = {
+                // PNG rendition
+                const renditionOptionsPng = {
                     range: addOnUISdk.constants.Range.currentPage,
                     format: addOnUISdk.constants.RenditionFormat.png,
                 };
-                const renditions = await addOnUISdk.app.document.createRenditions(
-                    renditionOptions,
+                const renditionsPng = await addOnUISdk.app.document.createRenditions(
+                    renditionOptionsPng,
                     addOnUISdk.constants.RenditionIntent.preview
                 );
-                if (renditions && renditions.length > 0) {
-                    const url = URL.createObjectURL(renditions[0].blob);
+                if (renditionsPng && renditionsPng.length > 0) {
+                    const url = URL.createObjectURL(renditionsPng[0].blob);
                     setPngUrl(url);
                 } else {
                     setError("No PNG rendition returned");
                 }
+                // MP4 rendition
+                let foundVideo = false;
+                const renditionOptionsMp4 = {
+                    range: addOnUISdk.constants.Range.currentPage,
+                    format: addOnUISdk.constants.RenditionFormat.mp4,
+                };
+                try {
+                    const renditionsMp4 = await addOnUISdk.app.document.createRenditions(
+                        renditionOptionsMp4,
+                        addOnUISdk.constants.RenditionIntent.preview
+                    );
+                    if (renditionsMp4 && renditionsMp4.length > 0) {
+                        const vurl = URL.createObjectURL(renditionsMp4[0].blob);
+                        setVideoUrl(vurl);
+                        foundVideo = true;
+                    } else {
+                        setVideoUrl(null);
+                    }
+                } catch (err) {
+                    setVideoUrl(null);
+                }
+                setNoVideoOrGif(!foundVideo);
             } catch (err: any) {
-                setError(err?.message || "Failed to fetch metadata or PNG");
+                setError(err?.message || "Failed to fetch metadata or renditions");
             }
         }
-        fetchMetaAndPng();
+        fetchMetaAndRenditions();
     }, [addOnUISdk, sandboxProxy]);
 
     return (
@@ -68,11 +92,9 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
                 {elementsMeta.length > 0 ? (
                     elementsMeta
                         .filter(el => {
-                            // Only show visual elements
-                            if (el.type && (el.type.toLowerCase().includes('text') || el.type.toLowerCase().includes('image') || el.type.toLowerCase().includes('media'))) {
+                            if (el.type && (el.type.toLowerCase().includes('text') || el.type.toLowerCase().includes('image') || el.type.toLowerCase().includes('media') || el.type.toLowerCase().includes('video') || el.type.toLowerCase().includes('animation') || el.type.toLowerCase().includes('unknown'))) {
                                 return true;
                             }
-                            // Show rectangles only if not used as a mask
                             if (el.type && el.type.toLowerCase().includes('rectangle')) {
                                 if (elementsMeta.find(e => e.maskShapeId === el.id)) return false;
                                 return true;
@@ -102,10 +124,27 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
                 ) : (
                     !error && <div>No elements found or loading...</div>
                 )}
+                {/* Show the PNG if available */}
                 {pngUrl && (
                     <div style={{ marginTop: 24 }}>
                         <h3>Page PNG Preview</h3>
                         <img src={pngUrl} alt="Page PNG" style={{ maxWidth: '100%', border: '1px solid #ccc', borderRadius: 8 }} />
+                    </div>
+                )}
+                {/* Show the video/animation if available, directly below PNG */}
+                {videoUrl && (
+                    <div style={{ marginTop: 24 }}>
+                        <h3>Page Video/Animation Preview (MP4)</h3>
+                        <video src={videoUrl} controls style={{ maxWidth: '100%', border: '1px solid #ccc', borderRadius: 8 }} />
+                    </div>
+                )}
+                {/* GIF not supported */}
+                <div style={{ marginTop: 24, color: '#888' }}>
+                    <em>GIF export is not supported by the SDK. Only PNG, MP4, JPG, and PDF are available.</em>
+                </div>
+                {noVideoOrGif && (
+                    <div style={{ marginTop: 24, color: '#888' }}>
+                        <em>No video or animation output available for this page.</em>
                     </div>
                 )}
             </div>
