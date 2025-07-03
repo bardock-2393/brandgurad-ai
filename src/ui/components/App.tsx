@@ -91,17 +91,10 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
                 <h2 style={{ marginTop: 24 }}>Elements on Current Page</h2>
                 {elementsMeta.length > 0 ? (
                     elementsMeta
-                        .filter(el => {
-                            if (el.type && (el.type.toLowerCase().includes('text') || el.type.toLowerCase().includes('image') || el.type.toLowerCase().includes('media') || el.type.toLowerCase().includes('video') || el.type.toLowerCase().includes('animation') || el.type.toLowerCase().includes('unknown'))) {
-                                return true;
-                            }
-                            if (el.type && el.type.toLowerCase().includes('rectangle')) {
-                                if (elementsMeta.find(e => e.maskShapeId === el.id)) return false;
-                                return true;
-                            }
-                            return false;
-                        })
+                        // .filter(el => { ... }) // REMOVE FILTER TEMPORARILY
                         .map((el, idx) => {
+                            // Log all types for debugging
+                            console.log('Element type:', el.type, el);
                             let label = '';
                             if (el.type && el.type.toLowerCase().includes('text')) {
                                 label = `Text: "${el.text ?? ''}"`;
