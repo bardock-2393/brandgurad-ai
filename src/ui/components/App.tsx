@@ -13,6 +13,7 @@ import "./App.css";
 
 import { AddOnSDKAPI } from "https://new.express.adobe.com/static/add-on-sdk/sdk.js";
 import logo from "./brandguard-ai-logo.png";
+import { FiCheckSquare, FiSquare, FiEdit, FiTrash2, FiSave, FiX } from "react-icons/fi";
 
 // --- Gemini API Config ---
 const GEMINI_API_KEY = "AIzaSyC6Ng6rn4n2XjIvPl9dvl_NjPn0QGsRidg";
@@ -178,7 +179,24 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
         setIsSendingToGemini(true);
         try {
             const selectedGuidelines = selected.map(idx => guidelines[idx]);
-            const prompt = `Given the following design data and guidelines, check each element for guideline violations. For every violation, output a Markdown table with the following columns: Guideline and Explanation (why it violates the guideline).\n- In the Explanation, use human-friendly color names (e.g., 'purple', 'blue', 'black') instead of raw RGB values or JSON.\n- Keep explanations short and clear, e.g., 'Element uses a purple fill color.'\n- Output only the table, no extra text.\n\nGuidelines:\n${selectedGuidelines.map((g, i) => `${i + 1}. ${g}`).join("\n")}\n\nPage Metadata:\n${JSON.stringify(pageMeta, null, 2)}\n\nElements Metadata:\n${JSON.stringify(elementsMeta, null, 2)}`;
+            const prompt = `Given the following design data and guidelines, check each element for guideline violations. For every violation, output a Markdown table with the following columns:
+- Guideline
+- Problematic Element or Text (quote the text or describe the element)
+- Explanation (why it violates the guideline).
+
+In the Explanation, use human-friendly color names (e.g., 'purple', 'blue', 'black') instead of raw RGB values or JSON.
+Keep explanations short and clear, e.g., 'The text "14 Nov" is in the wrong date format.'
+Output only the table, no extra text.
+If there are no violations, respond with exactly: "No violations found".
+
+Guidelines:
+${selectedGuidelines.map((g, i) => `${i + 1}. ${g}`).join("\n")}
+
+Page Metadata:
+${JSON.stringify(pageMeta, null, 2)}
+
+Elements Metadata:
+${JSON.stringify(elementsMeta, null, 2)}`;
             const parts: any[] = [];
             if (pngBlob) {
                 const imageBase64 = await blobToBase64(pngBlob);
@@ -266,12 +284,12 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
                         <Button variant="primary" onClick={() => setShowGuidelines(true)} style={{ marginBottom: 24 }}>
                             Add Guideline
                         </Button>
-                        <Button style={{ width: '100%', marginBottom: 0 }} variant="cta" onClick={handleSendToGemini} disabled={selected.length === 0 || isSendingToGemini}>
-                            {isSendingToGemini ? "Sending to Gemini..." : "Check Guidelines with Gemini"}
+                        <Button style={{ width: '100%', marginBottom: 0, background: '#b10dc9', color: '#fff' }} variant="cta" onClick={handleSendToGemini} disabled={selected.length === 0 || isSendingToGemini}>
+                            {isSendingToGemini ? "Sending to Gemini..." : "Check Guidelines with Ai"}
                         </Button>
                         {geminiOutput.length > 0 && (
                             <div className="gemini-output-panel">
-                                <h3>Gemini Output</h3>
+                                <h3>AI Output</h3>
                                 <div className="gemini-output-content">
                                     {markdownTableToHtml(geminiOutput[0].rule) || <pre>{geminiOutput[0].rule}</pre>}
                                 </div>
@@ -294,7 +312,7 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
                                 Delete All
                             </Button>
                         </div>
-                        <div className="guideline-list compact-scroll">
+                        <div className="guideline-list">
                             {guidelinesLoading ? (
                                 <div>Loading guidelines...</div>
                             ) : (
@@ -303,18 +321,29 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
                                 ) : (
                                     guidelines.map((g, idx) => (
                                         <div className={`guideline-row${selected.includes(idx) ? ' selected' : ''}`} key={idx}>
-                                            <input type="checkbox" checked={selected.includes(idx)} onChange={() => handleSelect(idx)} />
+                                            <input type="checkbox" checked={selected.includes(idx)} onChange={() => handleSelect(idx)} style={{ display: 'none' }} />
+                                            <span onClick={() => handleSelect(idx)} style={{ cursor: 'pointer', marginRight: 8 }}>
+                                                {selected.includes(idx) ? <FiCheckSquare size={18} color="#000" /> : <FiSquare size={18} color="#000" />}
+                                            </span>
                                             {editIdx === idx ? (
                                                 <>
                                                     <input className="edit-input small" value={editText} onChange={e => setEditText(e.target.value)} />
-                                                    <Button size="s" onClick={() => handleEdit(idx)} style={{ minWidth: 28, padding: 0 }}>💾</Button>
-                                                    <Button size="s" variant="secondary" onClick={() => { setEditIdx(null); setEditText(""); }} style={{ minWidth: 28, padding: 0 }}>✖</Button>
+                                                    <Button size="s" onClick={() => handleEdit(idx)} style={{ minWidth: 28, padding: 0 }}>
+                                                        <FiSave size={18} color="#000" />
+                                                    </Button>
+                                                    <Button size="s" variant="secondary" onClick={() => { setEditIdx(null); setEditText(""); }} style={{ minWidth: 28, padding: 0 }}>
+                                                        <FiX size={18} color="#b10dc9" />
+                                                    </Button>
                                                 </>
                                             ) : (
                                                 <>
                                                     <span className="guideline-text small" title={stripMarkdown(g)}>{stripMarkdown(g)}</span>
-                                                    <Button size="s" variant="secondary" onClick={() => { setEditIdx(idx); setEditText(g); }} style={{ minWidth: 28, padding: 0 }}>✏️</Button>
-                                                    <Button size="s" variant="negative" onClick={() => handleDelete(idx)} style={{ minWidth: 28, padding: 0 }}>🗑️</Button>
+                                                    <Button size="s" variant="secondary" onClick={() => { setEditIdx(idx); setEditText(g); }} style={{ minWidth: 28, padding: 0 }}>
+                                                        <FiEdit size={18} color="#b10dc9" />
+                                                    </Button>
+                                                    <Button size="s" variant="negative" onClick={() => handleDelete(idx)} style={{ minWidth: 28, padding: 0, background: '#b10dc9' }}>
+                                                        <FiTrash2 size={18} color="#fff" />
+                                                    </Button>
                                                 </>
                                             )}
                                         </div>
@@ -323,10 +352,10 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
                             )}
                         </div>
                         <div className="add-guideline-row">
-                            <input className="add-input" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Add a new guideline..." />
+                            <input className="add-input" value={newText} onChange={e => setNewText(e.target.value)} placeholder="Add or paste  guidelines..." />
                             <Button size="m" variant="primary" onClick={handleAdd}>Add</Button>
                         </div>
-                        <Button style={{ width: '100%', marginTop: 24 }} variant="cta" onClick={() => setShowGuidelines(false)}>
+                        <Button style={{ width: '100%', marginTop: 24, background: '#b10dc9', color: '#fff' }} variant="cta" onClick={() => setShowGuidelines(false)}>
                             Save
                         </Button>
                     </>

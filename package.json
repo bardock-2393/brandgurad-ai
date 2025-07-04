@@ -18,7 +18,8 @@
         "@swc-react/button": "1.0.3",
         "@swc-react/theme": "1.0.3",
         "react": "18.2.0",
-        "react-dom": "18.2.0"
+        "react-dom": "18.2.0",
+        "react-icons": "^5.5.0"
     },
     "devDependencies": {
         "@adobe/ccweb-add-on-scripts": "^3.0.0",

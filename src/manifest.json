@@ -1,6 +1,6 @@
 {
     "testId": "cafa64f3-e891-4a4f-97f3-dc377cccda25",
-    "name": "Add On Brandguard Ai",
+    "name": "Brandguard Ai",
     "version": "1.0.0",
     "manifestVersion": 2,
     "requirements": {
@@ -11,6 +11,9 @@
             }
         ],
         "renditionPreview": true
+    },
+    "icons": {
+        "128": "brandguard-ai-logo.png"
     },
     "entryPoints": [
         {
