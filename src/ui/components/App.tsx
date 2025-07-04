@@ -57,6 +57,7 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
     const [editText, setEditText] = useState("");
     const [newText, setNewText] = useState("");
     const [showGuidelines, setShowGuidelines] = useState(false);
+    const [infoMessage, setInfoMessage] = useState("");
 
     // Restore selected guidelines from storage on load
     useEffect(() => {
@@ -78,34 +79,38 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
     };
 
     // --- Fetch Metadata and PNG Rendition ---
-    useEffect(() => {
-        async function fetchMetaAndRenditions() {
-            try {
-                const metaArr = await addOnUISdk.app.document.getPagesMetadata({
-                    range: addOnUISdk.constants.Range.currentPage
-                });
-                setPageMeta(metaArr && metaArr.length > 0 ? metaArr[0] : null);
-                const elements = await sandboxProxy.getCurrentPageElementsMeta();
-                setElementsMeta(elements);
-                // PNG rendition
-                const renditionOptionsPng = {
-                    range: addOnUISdk.constants.Range.currentPage,
-                    format: addOnUISdk.constants.RenditionFormat.png,
-                };
-                const renditionsPng = await addOnUISdk.app.document.createRenditions(
-                    renditionOptionsPng,
-                    addOnUISdk.constants.RenditionIntent.preview
-                );
-                if (renditionsPng && renditionsPng.length > 0) {
-                    setPngBlob(renditionsPng[0].blob);
-                } else {
-                    setError("No PNG rendition returned");
-                }
-            } catch (err: any) {
-                setError(err?.message || "Failed to fetch metadata or renditions");
+    const fetchMetaAndRenditions = async () => {
+        try {
+            const metaArr = await addOnUISdk.app.document.getPagesMetadata({
+                range: addOnUISdk.constants.Range.currentPage
+            });
+            setPageMeta(metaArr && metaArr.length > 0 ? metaArr[0] : null);
+            const elements = await sandboxProxy.getCurrentPageElementsMeta();
+            setElementsMeta(elements);
+            // PNG rendition
+            const renditionOptionsPng = {
+                range: addOnUISdk.constants.Range.currentPage,
+                format: addOnUISdk.constants.RenditionFormat.png,
+            };
+            const renditionsPng = await addOnUISdk.app.document.createRenditions(
+                renditionOptionsPng,
+                addOnUISdk.constants.RenditionIntent.preview
+            );
+            if (renditionsPng && renditionsPng.length > 0) {
+                setPngBlob(renditionsPng[0].blob);
+            } else {
+                setError("No PNG rendition returned");
             }
+        } catch (err: any) {
+            setError(err?.message || "Failed to fetch metadata or renditions");
         }
+    };
+
+    // Call on initial load and poll every 2 seconds
+    useEffect(() => {
         fetchMetaAndRenditions();
+        const interval = setInterval(fetchMetaAndRenditions, 2000);
+        return () => clearInterval(interval);
     }, [addOnUISdk, sandboxProxy]);
 
     // --- Helpers ---
@@ -275,6 +280,13 @@ ${JSON.stringify(elementsMeta, null, 2)}`;
     };
 
     // --- Render ---
+    useEffect(() => {
+        if (selected.length > 0) setInfoMessage("");
+    }, [selected]);
+    useEffect(() => {
+        if (guidelines.length > 0) setInfoMessage("");
+    }, [guidelines]);
+
     return (
         <Theme system="express" scale="medium" color="light">
             <div className="container modern-guidelines">
@@ -284,9 +296,25 @@ ${JSON.stringify(elementsMeta, null, 2)}`;
                         <Button variant="primary" onClick={() => setShowGuidelines(true)} style={{ marginBottom: 24 }}>
                             Add Guideline
                         </Button>
-                        <Button style={{ width: '100%', marginBottom: 0, background: '#b10dc9', color: '#fff' }} variant="cta" onClick={handleSendToGemini} disabled={selected.length === 0 || isSendingToGemini}>
-                            {isSendingToGemini ? "Sending to Gemini..." : "Check Guidelines with Ai"}
+                        <Button
+                            style={{ width: '100%', marginBottom: 0, background: '#b10dc9', color: '#fff' }}
+                            variant="cta"
+                            onClick={() => {
+                                if (selected.length === 0 || isSendingToGemini) {
+                                    setInfoMessage("Please add a guideline, check the box, and save.");
+                                } else {
+                                    setInfoMessage("");
+                                    handleSendToGemini();
+                                }
+                            }}
+                        >
+                            {isSendingToGemini ? "Sending to Ai..." : "Check Guidelines with Ai"}
                         </Button>
+                        {infoMessage && (
+                            <div style={{ color: '#b10dc9', textAlign: 'center', marginTop: 8, fontWeight: 500 }}>
+                                {infoMessage}
+                            </div>
+                        )}
                         {geminiOutput.length > 0 && (
                             <div className="gemini-output-panel">
                                 <h3>AI Output</h3>
@@ -361,6 +389,9 @@ ${JSON.stringify(elementsMeta, null, 2)}`;
                     </>
                 )}
             </div>
+            <footer style={{ textAlign: 'center', padding: '16px 0', fontSize: 14, color: '#888' }}>
+                Developed by <a href="https://www.deepsantoshwar.xyz" target="_blank" rel="noopener noreferrer"><b>Deep</b></a> and <a href="https://renukawadetwar.vercel.app/" target="_blank" rel="noopener noreferrer"><b>Renuka</b></a>
+            </footer>
         </Theme>
     );
 };
