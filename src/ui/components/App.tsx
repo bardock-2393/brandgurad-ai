@@ -303,8 +303,11 @@ ${JSON.stringify(elementsMeta, null, 2)}`;
                                 if (selected.length === 0 || isSendingToGemini) {
                                     setInfoMessage("Please add a guideline, check the box, and save.");
                                 } else {
-                                    setInfoMessage("");
-                                    handleSendToGemini();
+                                    setInfoMessage("Preparing data, please wait...");
+                                    setTimeout(() => {
+                                        setInfoMessage("");
+                                        handleSendToGemini();
+                                    }, 5000);
                                 }
                             }}
                         >
