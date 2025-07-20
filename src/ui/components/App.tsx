@@ -17,7 +17,10 @@ import { FiCheckSquare, FiSquare, FiEdit, FiTrash2, FiSave, FiX } from "react-ic
 
 // --- Gemini API Config ---
 const GEMINI_API_KEY = "AIzaSyC6Ng6rn4n2XjIvPl9dvl_NjPn0QGsRidg";
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+// Using Gemini 2.0 Flash model to break guidelines into rules
+const GEMINI_FLASH_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+// Using Gemini 1.5 Pro model for main AI analysis
+const GEMINI_PRO_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
 
 // --- Guideline Management Hook ---
 function useGuidelines(addOnUISdk) {
@@ -130,7 +133,7 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
     // --- Add this helper to split guidelines using Gemini ---
     async function splitGuidelineToRules(guideline) {
         const prompt = `Split the following guideline into a list of clear, unique, and non-redundant rules. Each rule should be atomic and testable.\nGuideline: ${guideline}\nRules:`;
-        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        const response = await fetch(`${GEMINI_FLASH_API_URL}?key=${GEMINI_API_KEY}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -184,24 +187,7 @@ const App = ({ addOnUISdk, sandboxProxy }: { addOnUISdk: AddOnSDKAPI; sandboxPro
         setIsSendingToGemini(true);
         try {
             const selectedGuidelines = selected.map(idx => guidelines[idx]);
-            const prompt = `Given the following design data and guidelines, check each element for guideline violations. For every violation, output a Markdown table with the following columns:
-- Guideline
-- Problematic Element or Text (quote the text or describe the element)
-- Explanation (why it violates the guideline).
-
-In the Explanation, use human-friendly color names (e.g., 'purple', 'blue', 'black') instead of raw RGB values or JSON.
-Keep explanations short and clear, e.g., 'The text "14 Nov" is in the wrong date format.'
-Output only the table, no extra text.
-If there are no violations, respond with exactly: "No violations found".
-
-Guidelines:
-${selectedGuidelines.map((g, i) => `${i + 1}. ${g}`).join("\n")}
-
-Page Metadata:
-${JSON.stringify(pageMeta, null, 2)}
-
-Elements Metadata:
-${JSON.stringify(elementsMeta, null, 2)}`;
+            const prompt = `Given the following design data and guidelines, check each element for guideline violations. For every violation, output a Markdown table with the following columns:\n- Guideline\n- Problematic Element or Text (quote the text or describe the element)\n- Explanation (why it violates the guideline).\n\nIn the Explanation, use human-friendly color names (e.g., 'purple', 'blue', 'black') instead of raw RGB values or JSON.\nKeep explanations short and clear, e.g., 'The text "14 Nov" is in the wrong date format.'\nOutput only the table, no extra text.\nIf there are no violations, respond with exactly: "No violations found".\n\nGuidelines:\n${selectedGuidelines.map((g, i) => `${i + 1}. ${g}`).join("\n")}\n\nPage Metadata:\n${JSON.stringify(pageMeta, null, 2)}\n\nElements Metadata:\n${JSON.stringify(elementsMeta, null, 2)}`;
             const parts: any[] = [];
             if (pngBlob) {
                 const imageBase64 = await blobToBase64(pngBlob);
@@ -213,7 +199,7 @@ ${JSON.stringify(elementsMeta, null, 2)}`;
                 });
             }
             parts.push({ text: prompt });
-            const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            const response = await fetch(`${GEMINI_PRO_API_URL}?key=${GEMINI_API_KEY}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ contents: [ { parts } ] })
